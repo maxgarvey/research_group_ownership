@@ -1,39 +1,33 @@
 import os
-from subprocess import call
+import grp
 #from tempfile import TemporaryFile #doesn't work in py 2.4
 
 def create_map(location='/vol/www/'):
     '''create_map looks into the /vol/www directory and examines each item therein
     entering each directory and getting the permissions of the files inside.'''
-    group_dict = {}
+    dir_dict = {}
 
-    groups = os.listdir(location)
-    for group in groups:
-        group_dict[group] = {}
+    dirs = os.listdir(location)
+    for _dir in dirs:
+        dir_dict[_dir] = {}
 
-    for group in groups:
+    for _dir in dirs:
         #with TemporaryFile() as temp: doesn't work in py 2.4
-        temp = open('./ls_output.txt','w+')
-        call(['ls','-l',(os.path.join(location, group))], stdout=temp)
-        temp.seek(0)
-        ls_output = temp.read()
-        temp.close() #for py 2.4
-        os.remove('./ls_output.txt') #for py 2.4 
 
-        #print ls_output.split('\n')[0:3] #bad debug
-        for line in ls_output.split('\n')[1:-1]:
-            line_parts = line.split()
-            #print str(line_parts) + ' len(line_parts): ' + str(len(line_parts))
-            if not line.startswith('?'):
-                #print 'owner: {0}, group: {1}, filename: {2}'.format(line_parts[3],line_parts[4],line_parts[6]) #doesn't work in py 2.4
-                #print 'owner: ' + str(line_parts[2]) + ', group: ' + str(line_parts[3]) + ', filename: ' + str(line_parts[8]) #debug
-                group_dict[group][str(line_parts[8])] = str(line_parts[3])
-            else:
-                #print 'owner: ' + str(line_parts[2]) + ', group: ' + str(line_parts[3]) + ', filename: ' + str(line_parts[6]) #debug
-                group_dict[group][str(line_parts[6])] = str(line_parts[3])
+        try:
+            dir_contents = os.listdir(os.path.join(location,_dir))
+        except Exception, err:
+            print 'couldn\'t open ' + str(os.path.join(location, _dir)) + '\n' + str(err)
 
-    for key in group_dict.keys():
-        if group_dict[key] == {}:
-            del(group_dict[key])
+        for subdir in dir_contents:
+            try:
+                gid_number = os.stat(os.path.join(os.path.join(location,_dir),subdir)).st_gid
+                dir_dict[_dir][subdir] = grp.getgrgid(gid_number)[0]
+            except Exception, err:
+                print 'couldn\'t stat ' + str(os.path.join(os.path.join(location, _dir), subdir))
 
-    return group_dict
+    for key in dir_dict.keys():
+        if dir_dict[key] == {}:
+            del(dir_dict[key])
+
+    return dir_dict
