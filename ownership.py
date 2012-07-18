@@ -2,19 +2,19 @@ import os
 from subprocess import call
 #from tempfile import TemporaryFile #doesn't work in py 2.4
 
-def create_map():
+def create_map(location='/vol/www/'):
     '''create_map looks into the /vol/www directory and examines each item therein
     entering each directory and getting the permissions of the files inside.'''
     group_dict = {}
 
-    groups = os.listdir('/vol/www/')
+    groups = os.listdir(location)
     for group in groups:
         group_dict[group] = {}
 
     for group in groups:
         #with TemporaryFile() as temp: doesn't work in py 2.4
         temp = open('./ls_output.txt','w+')
-        call(['ls','-l',('/vol/www/'+group)], stdout=temp)
+        call(['ls','-l',(os.path.join(location, group))], stdout=temp)
         temp.seek(0)
         ls_output = temp.read()
         temp.close() #for py 2.4
