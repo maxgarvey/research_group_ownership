@@ -2,6 +2,7 @@ import os
 import grp
 import pwd
 import subprocess
+from tempfile import TemporaryFile
 
 def create_map(location='/vol/www/'):
     '''create_map looks into the /vol/www directory and examines each item therein
@@ -10,7 +11,10 @@ def create_map(location='/vol/www/'):
 
     #get all the permissions to bubble up just in case
     location_asterisk = os.path.join(location,'*')
-    subprocess.call(['ls -l '+location_asterisk], shell=True)
+    temp_fd = TemporaryFile()
+    subprocess.call(['ls -l '+location_asterisk], shell=True,
+        stdout = temp_fd, stderr=temp_fd)
+    temp_fd.close()
 
     all_users_v = pwd.getpwall()
     all_users = []
@@ -33,7 +37,7 @@ def create_map(location='/vol/www/'):
             #print 'dir: ' + _dir  + ', groupname: ' + groupname #debug
         except Exception, err:
             groupname = ''
-            print 'couldn\'t stat ' + str(os.path.join(location, _dir))
+            #print 'couldn\'t stat ' + str(os.path.join(location, _dir))
 
         found_groupname = False
 
@@ -51,7 +55,7 @@ def create_map(location='/vol/www/'):
                 dir_contents = os.listdir(os.path.join(location,_dir))
             except Exception, err:
                 dir_contents = []
-                print 'couldn\'t open ' + str(os.path.join(location, _dir)) + '\n' + str(err)
+                #print 'couldn\'t open ' + str(os.path.join(location, _dir)) + '\n' + str(err)
 
             owners = {}
             #for each of the items inside the directory
@@ -65,7 +69,8 @@ def create_map(location='/vol/www/'):
                     else:
                         owners[grp.getgrgid(gid_number)[0]] = 1
                 except Exception, err:
-                    print 'couldn\'t stat ' + str(os.path.join(os.path.join(location, _dir), subdir))
+                    #print 'couldn\'t stat ' + str(os.path.join(os.path.join(location, _dir), subdir))
+                    pass
 
             winner_number = 0
             winner_owner = ''
@@ -81,6 +86,6 @@ def create_map(location='/vol/www/'):
         if dir_dict[key] == '':
             deleted_keys.append(key)
             del(dir_dict[key])
-    print 'deleted keys: ' + str(deleted_keys)
+    #print 'deleted keys: ' + str(deleted_keys)
 
     return dir_dict
