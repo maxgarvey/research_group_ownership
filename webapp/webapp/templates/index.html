@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+ <head>
+  {% load static %}
+  {% get_static_prefix as STATIC_URL %}
+  <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}reset.css"/>
+  <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}layout.css"/>
+  <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}style.css"  />
+  <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+  <title>
+   Research Group Ownership
+  </title>
+  <meta charset="utf-8">
+ </head>
+
+ <body>
+  <script type="text/javascript">
+   $(document).ready( function() {
+
+    $("#group_ownership_div").addClass("changing_panel");
+    $("#success").addClass("changing_panel").hide();
+    $("#waiting").addClass("changing_panel").hide();
+
+    $("#group_ownership_button").addClass('button').click(function(){
+     $.ajax({
+      url:"/group_ownership/",
+      type:"POST",
+      data:"csrfmiddlewaretoken="+$("input[type=hidden][name=csrfmiddlewaretoken]").attr("value")+
+        "&groupname="+$("input[name=groupname]").val(),
+      success:function(a){
+       $("#waiting").slideUp();
+       $("#success").html(a+'<div id="back_button">Back</div>');
+       $("#back_button").addClass("button").click(function(){
+        $("#success").slideUp();
+        $("#group_ownership_div").slideDown();
+       });
+       $("#success").slideDown();
+      }
+     });
+     $("#group_ownership_div").slideUp();
+     $("#success").slideUp();
+     $("#waiting").slideDown();
+    });
+
+   });
+  </script>
+
+<!-- HERE IS PASTED HTML-->
+  <div id="page">
+   <div id="header-overlay">
+    <ul id="utility-nav">
+     <li>
+      <a href="https://my.pdx.edu/">myPSU</a>
+     </li>
+     <li class="last">
+      <a href="http://www.pdx.edu/contact">Contact PSU</a>
+     </li>
+    </ul>
+   </div><!-- header-overlay -->
+
+   <div id="header-wrap">
+    <hr class="header-deco">
+    <div id="header">
+     <a href="http://www.pdx.edu/" title="Home" rel="home" id="logo">
+      <img src="{{ STATIC_URL }}logo.png" alt="Home">
+     </a>
+    </div><!-- header -->
+   </div><!-- header-wrap -->
+
+   <div id="main-wrap">
+    <div id="main">
+     <ul id="navigation">
+      <li class=""><a href="http://www.pdx.edu/admissions" title="">Admissions</a></li> 
+      <li class=""><a href="http://www.pdx.edu/schools-colleges">Schools &amp; Colleges</a></li> 
+      <li class=""><a href="http://www.pdx.edu/academic-programs" class="active-trail active">Academic Programs</a></li> 
+      <li class=""><a href="http://www.pdx.edu/campus">Campus</a></li>
+      <li class="last"><a href="http://www.pdx.edu/alumni">Alumni</a></li> 
+      </ul>
+      <div id="container">
+       <div id="outer">
+<!-- END OF PASTED HTML-->
+
+  <div id="group_ownership_div">
+   {% csrf_token %}
+   <label for="groupname">
+    Name of Group:
+   </label><br/>
+   {{ group_ownership_form.groupname }}
+   <div id="group_ownership_button">Submit</div>
+  </div>
+
+  <div id="waiting">
+   Waiting for response from server...
+  </div>
+
+  <div id="success">
+  </div>
+
+<!-- THIS IS PASTED HTML -->
+      </div><!-- outer -->
+     </div><!-- conainer -->
+    </div><!-- main -->
+   </div><!-- main_wrapper -->
+  </div><!-- page -->
+  <div id="footer">
+   <ul>
+    <li class="first copyright"><a href="http://www.pdx.edu/copyright" title="Portland State Copyright Information">© 2011</a></li>
+    <li><a href="http://www.pdx.edu/giving/plans" title="Giving at Portland State">Give to PSU</a></li>
+    <li><a href="http://www.pdx.edu/faqs" title="Frequently-Asked Questions about Portland State">PSU FAQs</a></li>
+    <li><a href="http://www.pdx.edu/contact-us" title="Contact Portland State">Contact PSU</a></li>
+    <li><a href="http://www.directory.pdx.edu/" title="Find People at Portland State">Find People</a></li>
+    <li><a href="http://www.pdx.edu/campus" title="Getting Around at Portland State">Maps/Directions</a></li>
+    <li class="last"><a href="http://www.pdx.edu/sitemap" title="Portland State Sitemap">PSU Sitemap</a></li>
+   </ul>
+  </div><!-- footer -->
+<!-- END PASTED HTML -->
+
+ </body>
+</html>

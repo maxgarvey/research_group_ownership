@@ -1,0 +1,33 @@
+1. Start the shell, go to your maange.py
+>>> python manage.py shell
+
+
+2. Get the user
+
+Either load one ...
+>>> from django.contrib.auth import authenticate
+>>> user = authenticate(username="johndoe", password="yourpw")
+
+Or create one ...
+>>> from django.contrib.auth.models import User
+>>> user = User.objects.create_user(username='johndoe', email="",  password="yourpw")
+Django should silently automatically save it, and you should see it under Users in your admin page. But if you want save it yourself, do:
+>>> user.is_staff = False
+>>> user.save
+
+
+3. Check the user's permissions
+user.get_all_permissions()
+or
+user.user_permissions.all()
+
+
+1. Start the shell, go to your maange.py
+>>> python manage.py shell
+
+2. Create the group
+>>> from django.contrib.auth.models import Group
+>>> group = Group(name="GroupName")
+>>> group.save()
+
+NOTE that Django pre-made permissions are only suggestions, they only go as far as their string names. YOU have to implement them if you want to use them.
