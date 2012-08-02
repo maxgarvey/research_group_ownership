@@ -2,33 +2,48 @@
 from tempfile  import TemporaryFile
 
 import subprocess
-import argparse
+import optparse
 import logging
 import grp
 import pwd
 import os
 
-def create_map(location='/vol/www/'):
+def create_map(location='/vol/www/', verbose=False):
     '''create_map looks into the /vol/www directory and examines each item therein
     entering each directory and getting the permissions of the files inside.'''
     dir_dict = {}
 
+    logger = logging.getLogger()
+    logging.basicConfig()
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.CRITICAL)
+
+
+    '''VVVV shouldn't need this on tokra VVVV'''
     #get all the permissions to bubble up just in case
     location_asterisk = os.path.join(location,'*')
     temp_fd = TemporaryFile()
     subprocess.call(['ls -l '+location_asterisk], shell=True,
         stdout = temp_fd, stderr=temp_fd)
     temp_fd.close()
+    '''^^^^ shouldn't need this on tokra ^^^^'''
 
     all_users_v = pwd.getpwall()
     all_users = []
     for user in all_users_v:
         all_users.append(user[0])
 
-    #get a list of the contents of location... which will just be directories
-    dirs = os.listdir(location)
+    if os.path.exists(location):
+        #get a list of the contents of location... which will just be directories
+        dirs = os.listdir(location)
+    else:
+        logger.critical('%s doesn\'t exist' % location)
+        dirs = []
 
-    logging.debug('len(dirs): %d', len(dirs))
+    if verbose:
+        logger.debug('len(dirs): %d', len(dirs))
 
     for _dir in dirs:
         dir_dict[_dir] = {}
@@ -41,9 +56,10 @@ def create_map(location='/vol/www/'):
             groupname = grp.getgrgid(gid_number)[0]
         except Exception, err:
             groupname = ''
-            logging.debug('couldn\'t stat %s\n\t%s',
-                os.path.join(location, _dir),
-                 str(err))
+            if verbose:
+                logger.debug('couldn\'t stat %s\n\t%s',
+                    os.path.join(location, _dir),
+                    str(err))
 
         found_groupname = False
 
@@ -60,7 +76,7 @@ def create_map(location='/vol/www/'):
                 dir_contents = os.listdir(os.path.join(location,_dir))
             except Exception, err:
                 dir_contents = []
-                logging.debug('couldn\'t open %s\n\t%s', os.path.join(location, _dir), str(err))
+                logger.debug('couldn\'t open %s\n\t%s', os.path.join(location, _dir), str(err))
 
             owners = {}
             #for each of the items inside the directory
@@ -74,7 +90,7 @@ def create_map(location='/vol/www/'):
                     else:
                         owners[grp.getgrgid(gid_number)[0]] = 1
                 except Exception, err:
-                    logging.debug('couldn\'t stat %s', os.path.join(location, _dir, subdir))
+                    logger.debug('couldn\'t stat %s', os.path.join(location, _dir, subdir))
                     pass
 
             winner_number = 0
@@ -91,38 +107,56 @@ def create_map(location='/vol/www/'):
         if dir_dict[key] == '':
             deleted_keys.append(key)
             del(dir_dict[key])
-    logging.debug('deleted keys: %s', str(deleted_keys))
+    if verbose:
+        logger.debug('deleted keys: %s', str(deleted_keys))
 
     return dir_dict
 
 def make_file(args):
-    filename = args.output_file
+    filename          = args.output_file
+    input_directories = args.input_directories
+    verbose           = args.verbose
+    redo              = args.redo
     '''this method takes the name of the output file, determines if
     it the script should be reevaluated or not. and then does so,
     outputting to file.'''
+
+    logger = logging.getLogger()
+    logging.basicConfig()
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.CRITICAL)
+
+    if redo and os.path.exists(filename):
+        os.remove(filename)
 
     #check to see if we have to run the lookup again, or if our current
     #file is more recent than the most recent change
     if os.path.isfile(filename):
         our_timestamp = os.stat(filename).st_mtime       #time stamp of csv
-        www_timestamp = os.stat('/vol/www').st_mtime     #time stamp of www
-        share_timestamp = os.stat('/vol/share').st_mtime #time stamp of share
+        newer = True
 
-        #is our timestamp newer than the others?
-        if (our_timestamp > www_timestamp) and \
-            (our_timestamp > share_timestamp):
-            pass
-
-        #if not, make a new csv!
-        else:
-            os.remove(filename)
-            make_file(filename)
+        for dir in input_directories:
+            if not os.path.exists(dir):
+                logger.critical('%s doesn\'t exist' % dir)
+            try:
+                dir_timestamp = os.stat(dir).st_mtime        #time stamp of dir
+            except:
+                dir_timestamp = 0
+                logger.critical('couldn\'t stat %s' % dir)
+            if verbose:
+                logger.debug('%s timestamp: %d' % (filename, our_timestamp)) #debug
+                logger.debug('%s timestamp: %d' % (dir, dir_timestamp)) #debug
+            if our_timestamp < dir_timestamp:
+                os.remove(filename)
+                make_file(filename)
 
     else:
         fd = open(filename, 'w') #works with py 2.4
 
-        share_map = create_map('/vol/share') #don't have sufficient privs for this
-        www_map = create_map('/vol/www')     #do have sufficient privs for this
+        share_map = create_map('/vol/share', verbose) #don't have sufficient privs for this
+        www_map = create_map('/vol/www', verbose)     #do have sufficient privs for this
 
         www_keys = www_map.keys()
         share_keys = share_map.keys()
@@ -141,16 +175,20 @@ def make_file(args):
 
 if __name__ == "__main__":
     '''the main method.'''
-    parser = argparse.ArgumentParser(
+    parser = optparse.OptionParser(
         description='process i/o information for script.')
-    parser.add_argument('-i', dest='input_directories', action='append',
+    parser.add_option('-i', dest='input_directories', action='append',
         type=str, help='specify each input file with a -i flag')
-    parser.add_argument('-o', dest='output_file', action='store',
+    parser.add_option('-o', dest='output_file', action='store',
         help='specify the output filepath')
-    parser.add_argument('-v', dest='verbose', action='store_true',
-        help='verbose output to stdout.')
+    parser.add_option('-v', dest='verbose', action='store_true',
+        default=False, help='verbose output to stdout.')
+    parser.add_option('-r', dest='redo', action='store_true',
+        default=False, help=('automatically erases the existing file and'+\
+        ' looks at all the files again'))
 
-    args = parser.parse_args()
-    #print args       #debug
-    #print args.output_file #debug
+    (args, _) = parser.parse_args()
+   
+    #print args  #debug  
+ 
     make_file(args)
